@@ -1,19 +1,20 @@
-import "@/styles/globals.css";
-import type { AppProps } from "next/app";
-import { useEffect } from "react";
-import config from "@/config";
+import config from '@/config';
+import '@/styles/globals.css';
+import type { AppProps } from 'next/app';
+import { useEffect } from 'react';
 
 export default function App({ Component, pageProps }: AppProps) {
   const liffInit = async () => {
-    const liff = (await import("@line/liff")).default;
+    const liff = (await import('@line/liff')).default;
 
     try {
-      await liff.init({ liffId: config.liffId });
+      await liff.init({ liffId: config.lineApi.liffId });
     } catch (error) {
-      console.error("liff init error", error);
+      console.error('liff init error', error);
     }
+
     if (!liff.isLoggedIn()) {
-      liff.login();
+      await liff.login();
     }
   };
 
