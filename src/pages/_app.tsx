@@ -1,26 +1,12 @@
-import config from '@/config';
+import { useLine } from '@/hooks/useLine';
 import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
-import { useEffect } from 'react';
 
 export default function App({ Component, pageProps }: AppProps) {
-  const liffInit = async () => {
-    const liff = (await import('@line/liff')).default;
+  const { liffObject, status } = useLine();
 
-    try {
-      await liff.init({ liffId: config.lineApi.liffId });
-    } catch (error) {
-      console.error('liff init error', error);
-    }
-
-    if (!liff.isLoggedIn()) {
-      await liff.login();
-    }
-  };
-
-  useEffect(() => {
-    liffInit();
-  }, []);
+  pageProps.liffObject = liffObject;
+  pageProps.status = status;
 
   return <Component {...pageProps} />;
 }

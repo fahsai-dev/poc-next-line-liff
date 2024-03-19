@@ -1,9 +1,10 @@
+import { useLine } from '@/hooks/useLine';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 export default function Home() {
-  const [profile, setProfile] = useState<any>({});
+  const { logout } = useLine();
 
   // const liffGetProfile = async () => {
   //   const liff = (await import('@line/liff')).default;
@@ -19,19 +20,13 @@ export default function Home() {
   return (
     <section>
       <Head>
-        <title>My Profile</title>
+        <title>My Profile2</title>
       </Head>
       <h1>Profile</h1>
       <div>
-        {/* {profile.pictureUrl && (
-          <Image
-            src={profile.pictureUrl}
-            alt={profile.displayName}
-            width={500}
-            height={500}
-          />
-        )} */}
-        {/* <div>Name: {profile.displayName}</div> */}
+        <button onClick={logout} type="button">
+          Sign Out
+        </button>
       </div>
     </section>
   );
