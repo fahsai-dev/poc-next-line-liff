@@ -1,33 +1,36 @@
-import { useLine } from '@/hooks/useLine';
+import { getDefaultProps } from '@/utils/ssrHelper';
+import { GetServerSidePropsContext, InferGetServerSidePropsType } from 'next';
 import Head from 'next/head';
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
 
-export default function Home() {
-  const { logout } = useLine();
+export async function getServerSideProps(ctx: GetServerSidePropsContext) {
+  const defaultProps = await getDefaultProps(ctx);
 
-  // const liffGetProfile = async () => {
-  //   const liff = (await import('@line/liff')).default;
-  //   await liff.ready;
-  //   const profile = await liff.getProfile();
-  //   setProfile(profile);
-  // };
+  return {
+    props: {
+      ...defaultProps.props,
+      data: {},
+    },
+  };
+}
 
-  // useEffect(() => {
-  //   liffGetProfile();
-  // }, [profile.userId]);
+type IServerSideProps = InferGetServerSidePropsType<typeof getServerSideProps>;
 
+const Home = ({ data, line }: IServerSideProps) => {
   return (
     <section>
       <Head>
-        <title>My Profile2</title>
+        <title>My Profile</title>
       </Head>
-      <h1>Profile</h1>
+      <p>LINE</p>
       <div>
-        <button onClick={logout} type="button">
+        <p>accessToken: {line?.decodedIDToken?.name}</p>
+        <p>accessToken: {line?.accessToken}</p>
+        <button onClick={line?.logout} type="button">
           Sign Out
         </button>
       </div>
     </section>
   );
-}
+};
+
+export default Home;

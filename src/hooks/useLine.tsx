@@ -2,25 +2,54 @@ import config from '@/config';
 import { Liff } from '@line/liff';
 import { useEffect, useState } from 'react';
 
-type Status = 'signin';
+export interface LineState {
+  liff: Liff | null;
+  isLoggedIn: boolean;
+  accessToken: string | null;
+  decodedIDToken: JWTPayload | null;
+  logout: () => void;
+}
 
-export const useLine = () => {
+interface JWTPayload {
+  iss?: string;
+  sub?: string;
+  aud?: string;
+  exp?: number;
+  iat?: number;
+  auth_time?: number;
+  nonce?: string;
+  amr?: string[];
+  name?: string;
+  picture?: string;
+  email?: string;
+}
+
+export const useLine = (): LineState => {
   const [liffObject, setLiffObject] = useState<Liff | null>(null);
-  const [status, setStatus] = useState<Status>();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [decodedIDToken, setDecodedIDToken] = useState<JWTPayload | null>(null);
 
   const logout = () => {
     liffObject?.logout();
+    window.location.reload();
   };
 
   const initial = async () => {
     try {
-      if (status === 'signin') return;
+      if (isLoggedIn) return;
       const liff = (await import('@line/liff')).default;
       await liff.init({ liffId: config.lineApi.liffId });
       setLiffObject(liff);
 
       if (liff.isLoggedIn()) {
-        setStatus('signin');
+        setIsLoggedIn(true);
+
+        var accessToken = await liff.getAccessToken();
+        setAccessToken(accessToken);
+
+        var idToken = await liff.getDecodedIDToken();
+        setDecodedIDToken(idToken);
       } else {
         liff?.login();
       }
@@ -34,8 +63,10 @@ export const useLine = () => {
   }, []);
 
   return {
-    liffObject,
-    status,
-    logout,
+    liff: liffObject,
+    isLoggedIn: isLoggedIn,
+    accessToken: accessToken,
+    decodedIDToken: decodedIDToken,
+    logout: logout,
   };
 };

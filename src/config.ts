@@ -3,7 +3,6 @@ const config = {
   lineApi: {
     baseUrl: 'https://api.line.me',
     liffId: process.env.NEXT_PUBLIC_LIFF_ID || '',
-    redirectUri: process.env.NEXT_PUBLIC_LINE_REDIRECT_URI || '',
   },
 };
 
