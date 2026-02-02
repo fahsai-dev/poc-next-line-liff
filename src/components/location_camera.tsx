@@ -14,10 +14,7 @@ const LocationCamera = () => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const fetchLocation = useCallback((callback?: (pos: { latitude: number; longitude: number }) => void) => {
-    if (callback) {
-      setPhotoLoading(true);
-    }
-
+    setPhotoLoading(true);
     setError(null);
 
     if (!('geolocation' in navigator)) {
@@ -35,14 +32,20 @@ const LocationCamera = () => {
 
         if (callback) {
           callback(coords);
-          setPhotoLoading(false);
+        } else {
+          setPhotoLocation(coords);
         }
+        setPhotoLoading(false);
       },
       (err) => {
         console.error('Geolocation error:', err);
         let errorMessage = err.message;
-        if (err.code === err.TIMEOUT) {
-          errorMessage = 'Timeout expired (Location permission or GPS signal took too long)';
+        if (err.code === err.PERMISSION_DENIED) {
+          errorMessage = 'Location permission denied. Please enable location services.';
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          errorMessage = 'Location information is unavailable.';
+        } else if (err.code === err.TIMEOUT) {
+          errorMessage = 'Location request timed out.';
         }
         setError(errorMessage);
         setPhotoLoading(false);
@@ -50,7 +53,7 @@ const LocationCamera = () => {
       {
         enableHighAccuracy: true,
         timeout: 15000,
-        maximumAge: 0,
+        maximumAge: 0, // Allow 10 seconds old cached position
       }
     );
   }, []);
@@ -63,24 +66,19 @@ const LocationCamera = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 1. Get location at this moment
-    fetchLocation((coords) => {
-      setPhotoLocation(coords);
-    });
-
-    // 2. Convert file to Base64 for preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setCapturedImage(reader.result as string);
     };
     reader.readAsDataURL(file);
+
+    await fetchLocation();
   };
 
   const containerStyle: React.CSSProperties = {
     padding: '20px',
     backgroundColor: '#F5F5F5',
     borderRadius: '12px',
-    // boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
     maxWidth: '400px',
     margin: '20px auto',
     textAlign: 'center',
@@ -101,22 +99,35 @@ const LocationCamera = () => {
     width: '100%',
   };
 
-  const retryButtonStyle: React.CSSProperties = {
+  const photoButtonStyle: React.CSSProperties = {
     ...buttonStyle,
-    backgroundColor: '#666',
+    backgroundColor: '#06C755', // LINE Green
     marginTop: '20px',
   };
 
-  const photoButtonStyle: React.CSSProperties = {
+  const retryButtonStyle: React.CSSProperties = {
     ...buttonStyle,
-    backgroundColor: '#28a745',
-    marginTop: '20px',
+    backgroundColor: '#666',
+    fontSize: '14px',
+    padding: '8px 16px',
+    width: 'auto',
+    marginTop: '8px',
   };
 
   const textStyle: React.CSSProperties = {
     fontSize: '14px',
     color: '#666',
     marginBottom: '10px',
+  };
+
+  const errorStyle: React.CSSProperties = {
+    fontSize: '14px',
+    color: '#dc3545',
+    backgroundColor: '#fff5f5',
+    padding: '10px',
+    borderRadius: '8px',
+    marginTop: '10px',
+    border: '1px solid #ffc9c9',
   };
 
   return (
@@ -141,7 +152,6 @@ const LocationCamera = () => {
         style={{ display: 'none' }}
         onChange={handleFileChange}
         onClick={(e) => {
-          // Reset value to allow capturing the same photo/file if needed
           (e.target as HTMLInputElement).value = '';
         }}
       />
@@ -149,24 +159,54 @@ const LocationCamera = () => {
       {/* Photo Preview Section */}
       {capturedImage && (
         <div style={{ marginTop: '10px', paddingTop: '10px' }}>
-          {/* <h3 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>Captured Photo</h3> */}
           <img
             src={capturedImage}
             alt="Captured"
             style={{ width: '100%', borderRadius: '8px', marginBottom: '10px' }}
           />
-          {photoLoading ? (
-            <p style={textStyle}>Fetching photo coordinates...</p>
-          ) : photoLocation ? (
-            <div style={{ textAlign: 'left', backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '8px' }}>
+
+          {photoLoading && (
+            <p style={textStyle}>
+              <span className="spinner" style={{ marginRight: '8px' }}>
+                ⏳
+              </span>
+              Fetching photo coordinates...
+            </p>
+          )}
+
+          {error && (
+            <div style={errorStyle}>
+              <p style={{ margin: 0 }}>⚠️ {error}</p>
+              <button style={retryButtonStyle} onClick={() => fetchLocation()}>
+                Retry Fetch Location
+              </button>
+            </div>
+          )}
+
+          {photoLocation && !photoLoading && (
+            <div
+              style={{
+                textAlign: 'left',
+                backgroundColor: '#f9f9f9',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #eee',
+              }}
+            >
               <p style={{ ...textStyle, margin: 0 }}>
                 <strong>Photo Lat:</strong> {photoLocation.latitude}
               </p>
               <p style={{ ...textStyle, margin: 0 }}>
                 <strong>Photo Lng:</strong> {photoLocation.longitude}
               </p>
+              <button
+                style={{ ...retryButtonStyle, backgroundColor: '#0070f3', marginTop: '10px' }}
+                onClick={() => fetchLocation()}
+              >
+                Refresh Location
+              </button>
             </div>
-          ) : null}
+          )}
         </div>
       )}
 
