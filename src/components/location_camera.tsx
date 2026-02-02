@@ -13,53 +13,68 @@ const LocationCamera = () => {
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchLocation = useCallback((callback?: (pos: { latitude: number; longitude: number }) => void) => {
-    setPhotoLoading(true);
-    setError(null);
+  const fetchLocation = useCallback(() => {
+    return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+      setPhotoLoading(true);
+      setError(null);
 
-    if (!('geolocation' in navigator)) {
-      setError('Geolocation is not supported by your browser');
-      setPhotoLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-
-        if (callback) {
-          callback(coords);
-        } else {
-          setPhotoLocation(coords);
-        }
+      if (!('geolocation' in navigator)) {
+        const msg = 'Geolocation is not supported by your browser';
+        setError(msg);
         setPhotoLoading(false);
-      },
-      (err) => {
-        console.error('Geolocation error:', err);
-        let errorMessage = err.message;
-        if (err.code === err.PERMISSION_DENIED) {
-          errorMessage = 'Location permission denied. Please enable location services.';
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          errorMessage = 'Location information is unavailable.';
-        } else if (err.code === err.TIMEOUT) {
-          errorMessage = 'Location request timed out.';
-        }
-        setError(errorMessage);
-        setPhotoLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0, // Allow 10 seconds old cached position
+        reject(new Error(msg));
+        return;
       }
-    );
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setPhotoLocation(coords);
+          setPhotoLoading(false);
+          resolve(coords);
+        },
+        (err) => {
+          console.error('Geolocation error:', err);
+          let errorMessage = err.message;
+          if (err.code === err.PERMISSION_DENIED) {
+            errorMessage = 'Location permission denied. Please enable location services.';
+          } else if (err.code === err.POSITION_UNAVAILABLE) {
+            errorMessage = 'Location information is unavailable.';
+          } else if (err.code === err.TIMEOUT) {
+            errorMessage = 'Location request timed out.';
+          }
+          setError(errorMessage);
+          setPhotoLoading(false);
+          reject(new Error(errorMessage));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      );
+    });
   }, []);
 
-  const handleTakePhotoClick = () => {
-    cameraInputRef.current?.click();
+  const handleTakePhotoClick = async () => {
+    try {
+      // First, wait for location permission and coordinates
+      await fetchLocation();
+      // Only if successful, open the camera
+      cameraInputRef.current?.click();
+    } catch (err) {
+      console.error('Failed to get location before camera:', err);
+      // Even if location fails, we might still want to allow opening the camera,
+      // but the user specifically asked for permission first.
+      // If we want to STRICTLY require permission:
+      // return;
+
+      // If we want to allow camera anyway but show error:
+      // cameraInputRef.current?.click();
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,8 +86,6 @@ const LocationCamera = () => {
       setCapturedImage(reader.result as string);
     };
     reader.readAsDataURL(file);
-
-    await fetchLocation();
   };
 
   const containerStyle: React.CSSProperties = {
