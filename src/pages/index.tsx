@@ -1,6 +1,17 @@
 import { getDefaultProps } from '@/utils/ssrHelper';
 import { GetServerSidePropsContext, InferGetServerSidePropsType } from 'next';
+import dynamic from 'next/dynamic';
 import Head from 'next/head';
+
+const LocationCamera = dynamic(() => import('@/components/location_camera'), {
+  loading: () => <></>,
+  ssr: false,
+});
+
+const LocationCamera2 = dynamic(() => import('@/components/location_camera2'), {
+  loading: () => <></>,
+  ssr: false,
+});
 
 export async function getServerSideProps(ctx: GetServerSidePropsContext) {
   const defaultProps = await getDefaultProps(ctx);
@@ -122,6 +133,22 @@ const Home = ({ data, line }: IServerSideProps) => {
             onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#06C755')}
           >
             Sign Out
+          </button>
+
+          <LocationCamera />
+          {/* <LocationCamera2 /> */}
+
+          <button
+            onClick={() => {
+              window.open('https://www.rd.usda.gov/sites/default/files/pdf-sample_0.pdf', '_blank', 'noreferrer');
+            }}
+            style={{
+              fontSize: '14px',
+              color: '#666',
+              marginBottom: '24px',
+            }}
+          >
+            Download
           </button>
         </div>
       ) : (
