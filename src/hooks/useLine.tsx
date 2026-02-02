@@ -1,15 +1,23 @@
 import config from '@/config';
-import { Liff } from '@line/liff';
+import liff, { Liff } from '@line/liff';
 import { useEffect, useState } from 'react';
-
 export interface LineState {
   liff: Liff | null;
   isLoggedIn: boolean;
+  isLoading: boolean;
   accessToken: string | null;
-  decodedIDToken: JWTPayload | null;
+  idToken: string | null; // JWT Token สำหรับ verify
+  decodedIDToken: JWTPayload | null; // JWT Token decoded
+  profile: Profile | null;
   logout: () => void;
 }
 
+interface Profile {
+  displayName: string;
+  userId: string;
+  pictureUrl?: string;
+  statusMessage?: string;
+}
 interface JWTPayload {
   iss?: string;
   sub?: string;
@@ -27,46 +35,77 @@ interface JWTPayload {
 export const useLine = (): LineState => {
   const [liffObject, setLiffObject] = useState<Liff | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
   const [decodedIDToken, setDecodedIDToken] = useState<JWTPayload | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const logout = () => {
-    liffObject?.logout();
-    window.location.reload();
+    if (!liffObject) {
+      console.warn('[LINE LIFF] Cannot logout: LIFF not initialized');
+      return;
+    }
+
+    try {
+      liffObject.logout();
+      // Clear all states
+      setIsLoggedIn(false);
+      setAccessToken(null);
+      setIdToken(null);
+      setDecodedIDToken(null);
+      setProfile(null);
+    } catch (error) {
+      console.error('[LINE LIFF] Logout error:', error);
+    }
   };
 
-  const initial = async () => {
+  const initializeLiff = async () => {
     try {
-      if (isLoggedIn) return;
-      const liff = (await import('@line/liff')).default;
+      setIsLoading(true);
+
       await liff.init({ liffId: config.lineApi.liffId });
       setLiffObject(liff);
 
       if (liff.isLoggedIn()) {
+        const accessToken = liff.getAccessToken();
+        const idToken = liff.getIDToken();
+        const decodedIDToken = liff.getDecodedIDToken();
+        const profile = await liff.getProfile();
+
+        setAccessToken(accessToken);
+        setIdToken(idToken);
+        setDecodedIDToken(decodedIDToken);
+        setProfile(profile);
         setIsLoggedIn(true);
 
-        var accessToken = await liff.getAccessToken();
-        setAccessToken(accessToken);
-
-        var idToken = await liff.getDecodedIDToken();
-        setDecodedIDToken(idToken);
+        console.log('[LINE LIFF] Initialized successfully:', {
+          userId: profile.userId,
+          displayName: profile.displayName,
+        });
       } else {
-        liff?.login();
+        console.log('[LINE LIFF] User not logged in, redirecting to login...');
+        liff.login();
       }
-    } catch (error) {
-      console.error('@line/liff error', error);
+    } catch (err) {
+      console.error('[LINE LIFF] Initialization failed:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    initial();
+    initializeLiff();
   }, []);
 
   return {
     liff: liffObject,
-    isLoggedIn: isLoggedIn,
-    accessToken: accessToken,
-    decodedIDToken: decodedIDToken,
-    logout: logout,
+    isLoggedIn,
+    isLoading,
+    accessToken,
+    idToken,
+    decodedIDToken,
+    profile,
+    logout,
   };
 };
