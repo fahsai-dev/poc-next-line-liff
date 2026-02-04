@@ -1,5 +1,6 @@
 import config from '@/config';
 import liff, { Liff } from '@line/liff';
+import LIFFInspectorPlugin from '@line/liff-inspector';
 import { useEffect, useState } from 'react';
 export interface LineState {
   liff: Liff | null;
@@ -64,7 +65,13 @@ export const useLine = (): LineState => {
     try {
       setIsLoading(true);
 
+      const inspectorUrl = process.env.NEXT_PUBLIC_LIFF_INSPECTOR_URL;
+      if (inspectorUrl) {
+        console.log('[LINE LIFF] Using Inspector Origin:', inspectorUrl);
+        liff.use(new LIFFInspectorPlugin({ origin: inspectorUrl }));
+      }
       await liff.init({ liffId: config.lineApi.liffId });
+
       setLiffObject(liff);
 
       if (liff.isLoggedIn()) {
